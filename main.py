@@ -50,13 +50,17 @@ def receive_data():
             unp = unpack('@ffiffiffi', data)
             LS = list(unp)
             print(LS)
-            robot.set(0, LS[0], LS[1], LS[2])
-            robot.set(1, LS[3], LS[4], LS[5])
-            robot.set(2, LS[6], LS[7], LS[8])
-            # robot.set_robot_params(LS[0], LS[1], LS[2],
-            #                        LS[3], LS[4], LS[5],
-            #                        LS[6], LS[7], LS[8])
-            move_robot()
+            if LS[2] == 0 or LS[2] == 1:
+                robot.set(0, LS[0], LS[1], LS[2])
+                robot.set(1, LS[3], LS[4], LS[5])
+                robot.set(2, LS[6], LS[7], LS[8])
+                # robot.set_robot_params(LS[0], LS[1], LS[2],
+                #                        LS[3], LS[4], LS[5],
+                #                        LS[6], LS[7], LS[8])
+                move_robot()
+            if LS[2] == 50:
+                # get
+                send_params()
         except ConnectionResetError:
             print("Robot has been disconnected from the server")
             break
