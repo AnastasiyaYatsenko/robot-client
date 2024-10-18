@@ -26,6 +26,9 @@ class Robot:
     
     # COM occupied flags
     hand_com = [True, True, True]
+    allow_unhold = [0]
+    holders = [0, 0, 0]
+    on_start_params = [0]
     
     # result variables
     start_results = [[], [], []]
@@ -57,8 +60,15 @@ class Robot:
         t_get1.start()
 
     def send(self, i):
-        t_start1 = threading.Thread(target=self.robot[i].start, args=(self.hand_com[i], self.start_results, i))
-        t_start1.start()
+        self.get_params_holders()
+        non_i = [0, 1, 2]
+        non_i.remove(i)
+        if (self.holders[non_i[0]] != 1 or self.holders[non_i[1]] != 1) and not self.allow_unhold[0] and \
+                self.robot[i].params[6] == 0:
+            logging.error(f'Another hand is unholded already!')
+        else:
+            t_start1 = threading.Thread(target=self.robot[i].start, args=(self.hand_com[i], self.start_results, i))
+            t_start1.start()
 
     def sendSteps(self):#, lin1, ang1, hold1, lin2, ang2, hold2, lin3, ang3, hold3):
         steps_periods = self.calc_steps_and_ARR(self.robot[0].params.ang_deg, self.robot[0].params.lin_mm,
@@ -157,6 +167,7 @@ class Robot:
         return 1
 
     def hold(self):
+        self.get_params_holders()
         t_get1 = threading.Thread(target=self.robot[0].get,
                                   args=(self.hand_com[0], self.get_results, 0))
         t_get2 = threading.Thread(target=self.robot[1].get,
@@ -207,54 +218,58 @@ class Robot:
             t_start3.join()
 
     def unhold(self):
-        t_get1 = threading.Thread(target=self.robot[0].get,
-                                  args=(self.hand_com[0], self.get_results, 0))
-        t_get2 = threading.Thread(target=self.robot[1].get,
-                                  args=(self.hand_com[1], self.get_results, 1))
-        t_get3 = threading.Thread(target=self.robot[2].get,
-                                  args=(self.hand_com[2], self.get_results, 2))
-        t_get1.start()
-        t_get2.start()
-        t_get3.start()
+        self.get_params_holders()
+        if not self.allow_unhold[0]:
+            logging.error(f'Unhold is not allowed!')
+        else:
+            t_get1 = threading.Thread(target=self.robot[0].get,
+                                      args=(self.hand_com[0], self.get_results, 0))
+            t_get2 = threading.Thread(target=self.robot[1].get,
+                                      args=(self.hand_com[1], self.get_results, 1))
+            t_get3 = threading.Thread(target=self.robot[2].get,
+                                      args=(self.hand_com[2], self.get_results, 2))
+            t_get1.start()
+            t_get2.start()
+            t_get3.start()
 
-        t_get1.join()
-        t_get2.join()
-        t_get3.join()
-        # logging.error(f"Get results: ({self.get_results[0][4]:.3f}, {self.get_results[0][5]:.3f}), ({self.get_results[1][4]:.3f}, {self.get_results[1][5]:.3f}), ({self.get_results[2][4]:.3f}, {self.get_results[2][5]:.3f})")
-        error_flag = False
+            t_get1.join()
+            t_get2.join()
+            t_get3.join()
+            # logging.error(f"Get results: ({self.get_results[0][4]:.3f}, {self.get_results[0][5]:.3f}), ({self.get_results[1][4]:.3f}, {self.get_results[1][5]:.3f}), ({self.get_results[2][4]:.3f}, {self.get_results[2][5]:.3f})")
+            error_flag = False
 
-        if (self.get_results[0][0] < 0) or (self.get_results[1][0] < 0) or (self.get_results[2][0] < 0):
-            logging.error(f'Error occurred while getting the coordinates\nAbort the move')
-            error_flag = True
+            if (self.get_results[0][0] < 0) or (self.get_results[1][0] < 0) or (self.get_results[2][0] < 0):
+                logging.error(f'Error occurred while getting the coordinates\nAbort the move')
+                error_flag = True
 
-        if not error_flag:
-            lin_1 = self.get_results[0][4]
-            ang_1 = self.get_results[0][5]
+            if not error_flag:
+                lin_1 = self.get_results[0][4]
+                ang_1 = self.get_results[0][5]
 
-            lin_2 = self.get_results[1][4]
-            ang_2 = self.get_results[1][5]
+                lin_2 = self.get_results[1][4]
+                ang_2 = self.get_results[1][5]
 
-            lin_3 = self.get_results[2][4]
-            ang_3 = self.get_results[2][5]
+                lin_3 = self.get_results[2][4]
+                ang_3 = self.get_results[2][5]
 
-            self.robot[0].params = Params(0, 0, 0, 0, lin_1, ang_1, 0)
-            self.robot[1].params = Params(0, 0, 0, 0, lin_2, ang_2, 0)
-            self.robot[2].params = Params(0, 0, 0, 0, lin_3, ang_3, 0)
+                self.robot[0].params = Params(0, 0, 0, 0, lin_1, ang_1, 0)
+                self.robot[1].params = Params(0, 0, 0, 0, lin_2, ang_2, 0)
+                self.robot[2].params = Params(0, 0, 0, 0, lin_3, ang_3, 0)
 
-            t_start1 = threading.Thread(target=self.robot[0].start,
-                                        args=(self.hand_com[0], self.start_results, 0))
-            t_start2 = threading.Thread(target=self.robot[1].start,
-                                        args=(self.hand_com[1], self.start_results, 1))
-            t_start3 = threading.Thread(target=self.robot[2].start,
-                                        args=(self.hand_com[2], self.start_results, 2))
+                t_start1 = threading.Thread(target=self.robot[0].start,
+                                            args=(self.hand_com[0], self.start_results, 0))
+                t_start2 = threading.Thread(target=self.robot[1].start,
+                                            args=(self.hand_com[1], self.start_results, 1))
+                t_start3 = threading.Thread(target=self.robot[2].start,
+                                            args=(self.hand_com[2], self.start_results, 2))
 
-            t_start1.start()
-            t_start2.start()
-            t_start3.start()
+                t_start1.start()
+                t_start2.start()
+                t_start3.start()
 
-            t_start1.join()
-            t_start2.join()
-            t_start3.join()
+                t_start1.join()
+                t_start2.join()
+                t_start3.join()
 
     def getVersion(self, i):
         t_get1 = threading.Thread(target=self.robot[i].getVersion, args=(self.hand_com[i], self.getVersion_results, i))
@@ -301,6 +316,36 @@ class Robot:
         t_reset1.start()
         t_reset2.start()
         t_reset3.start()
+
+    def get_params_holders(self):
+        # logging.error(f'Get params on start (inside): {self.on_start_params[0]}')
+        # if self.on_start_params:
+        #     return
+        self.on_start_params[0] = 1
+        # logging.error(f'params on start: {self.on_start_params}')
+        t_get1 = threading.Thread(target=self.robot[0].get, args=(self.hand1_com[0], self.get_results, 0, False))
+        t_get2 = threading.Thread(target=self.robot[1].get, args=(self.hand2_com[0], self.get_results, 1, False))
+        t_get3 = threading.Thread(target=self.robot[2].get, args=(self.hand3_com[0], self.get_results, 2, False))
+
+        t_get1.start()
+        t_get2.start()
+        t_get3.start()
+
+        t_get1.join()
+        t_get2.join()
+        t_get3.join()
+
+        self.holders[0] = self.get_results[0][6]
+        self.holders[1] = self.get_results[1][6]
+        self.holders[2] = self.get_results[2][6]
+
+    def allow(self):
+        if not self.allow_unhold[0]:
+            logging.error(f'Unhold is allowed')
+            self.allow_unhold[0] = 1
+        else:
+            logging.error(f'Unhold is forbidden')
+            self.allow_unhold[0] = 0
 
     # TODO
     def oneR(self):
